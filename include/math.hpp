@@ -152,14 +152,9 @@ namespace glslmath {
     basic_mat<Column, M> operator*(const basic_mat<Column, M> &a, const basic_mat<Column, M> &b) {
         basic_mat<Column, M> result;
         for (size_t c = 0; c != result.num_cols(); ++c) {
-            std::cout << "col " << c << "\n";
-            std::cout << "sum= " << a[0] << " * " <<  b[c][0] << "\n";
             Column sum = a[0] * b[c][0];
-            std::cout << "sum= " << sum << "\n";
             for (size_t r = 1; r != result.num_rows(); ++r) {
-                std::cout << "sum+= " << a[r] << " * " <<  b[c][r] << "\n";
                 sum += a[r] * b[c][r];
-                std::cout << "sum= " << sum << "\n";
             }
             result.set_elem(c, sum);
         }

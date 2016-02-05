@@ -1,5 +1,6 @@
 
 #include <ostream>
+#include <cmath>
 #include <stdio.h>
 
 
@@ -37,6 +38,15 @@ namespace glslmath {
 
         template <class F>
         basic_vec map(const basic_vec &b, F f) const {
+            basic_vec res;
+            for (size_t i = 0; i != N; ++i) {
+                res.impl[i] = f(impl[i], b.impl[i]);
+            }
+            return res;
+        }
+
+        template <class F>
+        basic_vec map(const basic_vec &b, const basic_vec &c, F f) const {
             basic_vec res;
             for (size_t i = 0; i != N; ++i) {
                 res.impl[i] = f(impl[i], b.impl[i]);
@@ -89,10 +99,13 @@ namespace glslmath {
     basic_vec<T, Scalar, N> operator/(const basic_vec<T, Scalar, N> &a, Scalar b) { return a.map([b](Scalar a){ return a / b; }); }
 
     template <class T, class Scalar, size_t N>
-    basic_vec<T, Scalar, N> min(const basic_vec<T, Scalar, N> &a, const basic_vec<T, Scalar, N> &b) { return a.map(b, std::min); }
+    basic_vec<T, Scalar, N> min(const basic_vec<T, Scalar, N> &a, const basic_vec<T, Scalar, N> &b) { return a.map(b, [](Scalar a, Scalar b){ return a < b ? a : b; }); }
 
     template <class T, class Scalar, size_t N>
-    basic_vec<T, Scalar, N> max(const basic_vec<T, Scalar, N> &a, const basic_vec<T, Scalar, N> &b) { return a.map(b, std::max); }
+    basic_vec<T, Scalar, N> max(const basic_vec<T, Scalar, N> &a, const basic_vec<T, Scalar, N> &b) { return a.map(b, [](Scalar a, Scalar b){ return a > b ? a : b; }); }
+
+    template <class T, class Scalar, size_t N>
+    basic_vec<T, Scalar, N> mix(const basic_vec<T, Scalar, N> &a, const basic_vec<T, Scalar, N> &b, const basic_vec<T, Scalar, N> &c) { return a.map(b, c, [](Scalar a, Scalar b, Scalar c){ return a * (1 - c) + b * c; }); }
 
     template <class T, class Scalar, size_t N>
     bool operator==(const basic_vec<T, Scalar, N> &a, const basic_vec<T, Scalar, N> &b) { return a.sum(b, [](Scalar a, Scalar b){ return a == b; }, 0) == N; }
@@ -101,7 +114,7 @@ namespace glslmath {
     bool operator!=(const basic_vec<T, Scalar, N> &a, const basic_vec<T, Scalar, N> &b) { return a.sum(b, [](Scalar a, Scalar b){ return a == b; }, 0) != N; }
 
     template <class T, class Scalar, size_t N>
-    basic_vec<T, Scalar, N> abs(const basic_vec<T, Scalar, N> &a) { return a.map(std::abs); }
+    basic_vec<T, Scalar, N> abs(const basic_vec<T, Scalar, N> &a) { return a.map([](Scalar a){ return a < Scalar(0) ? -a : a; }); }
 
     template <class T, class Scalar, size_t N>
     Scalar dot(const basic_vec<T, Scalar, N> &a, const basic_vec<T, Scalar, N> &b) { return a.sum(b, [](Scalar a, Scalar b){ return a * b; }, Scalar(0)); }

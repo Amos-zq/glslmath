@@ -132,11 +132,11 @@ public:
     {
       chunk<Iter> ATR(p, "ATR");
       {
-        chunk<Iter> at1(p, "at1");
+        chunk<Iter> at1(p, "atn");
         p = wrtxt(p, name_.c_str());
       }
       {
-        chunk<Iter> at2(p, "atd");
+        chunk<Iter> at2(p, "atf");
         for (auto c : data_) *p++ = c;
       }
     }
@@ -156,7 +156,7 @@ private:
 /// single component mesh
 class mesh : public std::vector<attribute>, public serial {
 public:
-  mesh(const std::string &name="", size_t index_size=4)
+  mesh(const std::string &name="mesh", size_t index_size=4)
   : name_(name) {
   }
   

@@ -1,19 +1,33 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+// GLSL-style math library
+//
+// (C) Andy Thomason 2016 (MIT License)
+//
+////////////////////////////////////////////////////////////////////////////////
 
-//#include "vector.hpp"
+#ifndef INCLUDED_GLSLMATH_MARCHING_CUBES
+#define INCLUDED_GLSLMATH_MARCHING_CUBES
+
+#include "math.hpp"
+#include "mesh.hpp"
+#include <string>
+
+namespace glslmath {
 
 /// Helper to construct marching cubes meshes.
 class marching_cubes {
 public:
-  std::vector<glslmath::vec3> vertices;
-  std::vector<glslmath::vec3> normals;
-  std::vector<glslmath::vec4> colours;
-  std::vector<int> indices;
 
 
   // Given a 3D lattice of values (mc_values) generate triangles where values transition from positive to negative.
-  marching_cubes(int x0, int y0, int z0, int xdim, int ydim, int zdim, float grid_spacing, const float *mc_values, const glslmath::vec4 *mc_colours) {
+  marching_cubes(int x0, int y0, int z0, int xdim, int ydim, int zdim, float grid_spacing, const float *mc_values, const vec4 *mc_colours) {
     using namespace glslmath;
 
+    size_t pos_idx = msh_.add_attribute("pos", 3, sizeof(float), true, false);
+    attribute &pos = msh_[pos_idx];
+    size_t pos_size = 0;
+    
     //float rgs = 1.0f / grid_spacing;
 
     // This reproduced the vertex order of Paul Bourke's (borrowed) table.
@@ -65,8 +79,9 @@ public:
             float v1 = mc_values [idx + 1];
             if (v0 * v1 < 0) {
               float lambda = v0 / (v0 - v1);
-              edge_indices[idx*3+0] = (int)vertices.size();
-              vertices.push_back(vec3(float(x0 + i + lambda), float(y0 + j), float(z0 + k)) * grid_spacing);
+              edge_indices[idx*3+0] = (int)pos_size++;
+              pos.push(vec3(float(x0 + i + lambda), float(y0 + j), float(z0 + k)) * grid_spacing);
+              //vertices.push_back(vec3(float(x0 + i + lambda), float(y0 + j), float(z0 + k)) * grid_spacing);
               //normals.push_back(vec3::lerp (mc_normals[idx], mc_normals[idx+1], lambda).normalised());
               //colours.push_back(mix (mc_colours[idx], mc_colours[idx+1], lambda));
             }
@@ -77,8 +92,9 @@ public:
             float v1 = mc_values [idx + xdim];
             if (v0 * v1 < 0) {
               float lambda = v0 / (v0 - v1);
-              edge_indices[idx*3+1] = (int)vertices.size();
-              vertices.push_back(vec3(float(x0 + i), float(y0 + j + lambda), float(z0 + k)) * grid_spacing);
+              edge_indices[idx*3+1] = (int)pos_size++;
+              pos.push(vec3(float(x0 + i), float(y0 + j + lambda), float(z0 + k)) * grid_spacing);
+              //vertices.push_back(vec3(float(x0 + i), float(y0 + j + lambda), float(z0 + k)) * grid_spacing);
               //normals.push_back(vec3::lerp (mc_normals[idx], mc_normals[idx+xdim], lambda).normalised());
               //colours.push_back(mix (mc_colours[idx], mc_colours[idx+xdim], lambda));
             }
@@ -89,8 +105,9 @@ public:
             float v1 = mc_values [idx + xdim*ydim];
             if (v0 * v1 < 0) {
               float lambda = v0 / (v0 - v1);
-              edge_indices[idx*3+2] = (int)vertices.size();
-              vertices.push_back(vec3(x0 + i, y0 + j, z0 + k + lambda) * grid_spacing);
+              edge_indices[idx*3+2] = (int)pos_size++;
+              pos.push(vec3(x0 + i, y0 + j, z0 + k + lambda) * grid_spacing);
+              //vertices.push_back(vec3(x0 + i, y0 + j, z0 + k + lambda) * grid_spacing);
               //normals.push_back(vec3::lerp (mc_normals[idx], mc_normals[idx+xdim*ydim], lambda).normalised());
               //colours.push_back(mix (mc_colours[idx], mc_colours[idx+xdim*ydim], lambda));
             }
@@ -130,19 +147,26 @@ public:
             int i1 = edge_indices [idx*3 + edge_offsets [(int)triangles [off + 1]]];
             int i2 = edge_indices [idx*3 + edge_offsets [(int)triangles [off + 2]]];
             if (i0 >= 0 && i1 >= 0 && i2 >= 0) {
-              indices.push_back(i0);
-              indices.push_back(i1);
-              indices.push_back(i2);
+              msh_.push_index(i0);
+              msh_.push_index(i1);
+              msh_.push_index(i2);
             }
             off += 3;
           }
         }
       }
     }
+    msh_.generate_normals();
   }
+  
+  const mesh &get_mesh() const { return msh_; }
+
 private:
+  mesh msh_;
+
   static const char *mc_triangles() {
     // marching cubes edge lists
+    // see http://paulbourke.net/geometry/polygonise/marchingsource.cpp for example.
     static const char values[] = {
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
       0, 8, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -404,3 +428,7 @@ private:
     return values;
   }
 };
+
+}
+
+#endif

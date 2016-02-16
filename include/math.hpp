@@ -1,3 +1,13 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+// GLSL-style math library
+//
+// (C) Andy Thomason 2016 (MIT License)
+//
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef INCLUDED_GLSLMATH_MATH
+#define INCLUDED_GLSLMATH_MATH
 
 #include <ostream>
 #include <cmath>
@@ -119,6 +129,12 @@ namespace glslmath {
     template <class T, class Scalar, size_t N>
     Scalar dot(const basic_vec<T, Scalar, N> &a, const basic_vec<T, Scalar, N> &b) { return a.sum(b, [](Scalar a, Scalar b){ return a * b; }, Scalar(0)); }
     
+    template <class T, class Scalar, size_t N>
+    basic_vec<T, Scalar, N> normalized(const basic_vec<T, Scalar, N> &a) {
+        float rlen = 1.0f / std::sqrt(dot(a, a));
+        return a * rlen;
+    }
+
     template <class Column, size_t M>
     class basic_mat : public basic_vec<Column[M], Column, M> {
     public:
@@ -165,7 +181,12 @@ namespace glslmath {
         typedef C this_t; \
         C() {} \
         C(const base_t &b) : base_t(b) {} \
-        C(const this_t &b) : base_t(b) {}
+        C(const this_t &b) : base_t(b) {} \
+        C &operator+=(C b) { return (*this) = (*this) + b; } \
+        C &operator-=(C b) { return (*this) = (*this) - b; } \
+        C &operator*=(C b) { return (*this) = (*this) * b; } \
+        C &operator/=(C b) { return (*this) = (*this) / b; }
+    
 
     class vec2 : public basic_vec<float[2], float, 2> {
     public:
@@ -177,11 +198,6 @@ namespace glslmath {
         }
     };
     
-    vec2 operator+=(vec2 &a, vec2 b) { return a = a + b; }
-    vec2 operator-=(vec2 &a, vec2 b) { return a = a - b; }
-    vec2 operator*=(vec2 &a, vec2 b) { return a = a * b; }
-    vec2 operator/=(vec2 &a, vec2 b) { return a = a / b; }
-
     class vec3 : public basic_vec<float[3], float, 3> {
     public:
         MATH_VEC_BOILERPLATE(vec3)
@@ -341,3 +357,5 @@ namespace glslmath {
     }
     
 }
+
+#endif

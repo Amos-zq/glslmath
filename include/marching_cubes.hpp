@@ -25,7 +25,7 @@ public:
     using namespace glslmath;
 
     size_t pos_idx = msh_.add_attribute("pos", 3, sizeof(float), true, false);
-    attribute &pos = msh_[pos_idx];
+    attribute &pos = msh_.attributes()[pos_idx];
     size_t pos_size = 0;
     
     //float rgs = 1.0f / grid_spacing;

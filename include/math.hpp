@@ -231,6 +231,23 @@ namespace glslmath {
             set_elem(2, z);
             set_elem(3, w);
         }
+        
+        vec4(vec3 xyz, float w) {
+            set_elem(0, xyz.x());
+            set_elem(1, xyz.y());
+            set_elem(2, xyz.z());
+            set_elem(3, w);
+        }
+        
+        vec4(vec2 xy, float z, float w) {
+            set_elem(0, xy.x());
+            set_elem(1, xy.y());
+            set_elem(2, z);
+            set_elem(3, w);
+        }
+        
+        vec3 xyz() const { return vec3(x(), y(), z()); }
+        vec2 xy() const { return vec2(x(), y()); }
     };
     
     class ivec2 : public basic_vec<int[2], int, 2> {

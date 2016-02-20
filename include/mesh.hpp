@@ -131,7 +131,7 @@ public:
 
   // clone another attribute except for the data.
   void copy_params(const attribute &rhs) {
-    name_ = rhs.name();
+    name_ = rhs.name_;
     vector_elems_ = rhs.vector_elems_;
     scalar_size_ = rhs.scalar_size_;
     is_float_ = rhs.is_float_;
@@ -218,9 +218,15 @@ public:
   : name_(name), index_size_(index_size) {
   }
   
-  size_t add_attribute(const std::string &name="", size_t num_elems=3, size_t element_size=4, bool is_float=true, bool is_unsigned=false, bool is_normalized=false) {
+  size_t add_attribute(const std::string &name="", size_t vector_elems=3, size_t scalar_size=4, bool is_float=true, bool is_unsigned=false, bool is_normalized=false) {
     size_t res = attrs_.size();
-    attrs_.emplace_back(name, num_elems, element_size, is_float, is_unsigned, is_normalized);
+    attrs_.emplace_back(name, vector_elems, scalar_size, is_float, is_unsigned, is_normalized);
+    return res;
+  }
+
+  size_t add_attribute(const attribute &oldattr) {
+    size_t res = attrs_.size();
+    attrs_.emplace_back(oldattr.name(), oldattr.vector_elems(), oldattr.scalar_size(), oldattr.is_float(), oldattr.is_unsigned(), oldattr.is_normalized());
     return res;
   }
 
@@ -265,10 +271,12 @@ public:
 
   // generate normals for this mesh.
   void generate_normals() {
-    if (find_attribute("normal") != attributes().size()) return;
+    if (find_attribute("normal") != bad_attr) return;
     
     size_t normal_attr = add_attribute("normal");
     size_t pos_attr = find_attribute("pos");
+    std::cout << "normal_attr=" << normal_attr << "\n";
+    std::cout << "normal_attr=" << normal_attr << "\n";
 
     attribute &pos = attrs_[pos_attr];
     
@@ -348,7 +356,9 @@ public:
   const std::vector<attribute> &attributes() const { return attrs_; }
   const std::vector<index_type> &indices() const { return indices_; }
   const std::string &name() const { return name_; }
-  
+  attribute &operator[](size_t i) { return attrs_[i]; }
+  const attribute &operator[](size_t i) const { return attrs_[i]; }
+
 private:
   std::string name_;
   std::vector<attribute> attrs_;
@@ -357,7 +367,7 @@ private:
 };
 
 /// multi-component mesh
-class multi_mesh : public std::vector<mesh>, public serial {
+class multi_mesh : public serial {
 public:
   typedef mesh::index_type index_type;
 
@@ -367,7 +377,7 @@ public:
   
   /// Make a mesh with a single submesh
   multi_mesh(const mesh &src) {
-    push_back(src);
+    submeshes_.push_back(src);
   }
 
   /// Split the mesh into smaller vertex chunks.  
@@ -381,37 +391,50 @@ public:
       }
     }
 
+    std::cout << "is_small=" << is_small << "\n";
     if (is_small) {
-      dest.push_back(src);
+      dest.submeshes_.push_back(src);
     } else {
       auto &indices = src.indices();
       std::vector<index_type> fwd(indices.size());
-      std::vector<index_type> rev;
-      rev.reserve(max_size + 2);
+      std::vector<index_type> old_vertices;
+      std::vector<index_type> new_indices;
+      std::fill(fwd.begin(), fwd.end(), 0xffffffff);
+      new_indices.reserve(max_size + 2);
+      old_vertices.reserve(max_size + 2);
       size_t t = 0;
       int mesh_number = 0;
       for (size_t i = 0; i != indices.size(); ++i) {
-        if (fwd[i] == 0) {
-          rev.push_back(i);
-          fwd[i] = (index_type)rev.size();
+        size_t idx = indices[i];
+        index_type new_idx = fwd[idx];
+        if (new_idx == 0xffffffff) {
+          new_idx = fwd[idx] = (index_type)old_vertices.size();
+          old_vertices.push_back(idx);
         }
+        new_indices.push_back(new_idx);
+
         if (++t == 3 || i == indices.size()-1) {
           t = 0;
-          if (i == indices.size()-1 || rev.size() >= max_size) {
+          if (i == indices.size()-1 || old_vertices.size() >= max_size) {
+            std::cout << "new_indices.size()" << old_vertices.size() << "\n";
             std::stringstream ns;
             ns << src.name() << "." << mesh_number++;
             mesh submesh(ns.str(), new_index_size);
+
+            submesh.indices() = new_indices;
             
             for (auto &oldattr : src.attributes()) {
-              attribute newattr;
-              newattr.copy_params(oldattr);
-              for (size_t j = 0; j != rev.size(); ++j) {
-                newattr[j] = oldattr[rev[j]];
+              size_t newattr_idx = submesh.add_attribute(oldattr);
+              attribute &newattr = submesh[newattr_idx];
+              for (size_t j = 0; j != old_vertices.size(); ++j) {
+                newattr.push(oldattr[old_vertices[j]]);
               }
             }
-            submesh.indices() = rev;
-            rev.resize(0);
-            std::fill(fwd.begin(), fwd.end(), 0);
+
+            new_indices.resize(0);
+            old_vertices.resize(0);
+            std::fill(fwd.begin(), fwd.end(), 0xffffffff);
+            dest.submeshes_.push_back(submesh);
           }
         }
       }
@@ -424,7 +447,7 @@ public:
   Iter write_binary(Iter p) const {
     {
       chunk<Iter> MLT(p, "MLT");
-      for (auto &m : *this) {
+      for (auto &m : submeshes_) {
         p = m.write_binary(p);
       }
     }
@@ -432,10 +455,12 @@ public:
   }
 
   void write_obj(std::ostream &os) const {
-    for (auto &m : *this) {
+    for (auto &m : submeshes_) {
       m.write_obj(os);
     }
   }
+private:
+  std::vector<mesh> submeshes_;
 };
 
 
